@@ -6,12 +6,24 @@
 //
 
 import UIKit
+import FSCalendar
 
-class ViewController: UIViewController , UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout,UITableViewDataSource, UITableViewDelegate {
+
+class ViewController: UIViewController , UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout,UITableViewDataSource, UITableViewDelegate,FSCalendarDelegate, FSCalendarDataSource {
     
+    private var calendarPopup: FSCalendar?
+    private var dimmingView: UIView?
+    // holds vaccine/event dates normalized to midnight
+    private var eventDatesSet: Set<Date> = []
+
+    // convenience calendar
+    private let localCalendar = Calendar.current
+
+
     @IBOutlet weak var filtersCollectionView: UICollectionView!
     @IBOutlet weak var vaccinesTableView: UITableView!
     @IBOutlet weak var bottomBar: UIView!
+    @IBOutlet weak var calendarButton: UIButton!
 
 
 
@@ -26,17 +38,138 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
             vaccinesTableView.estimatedRowHeight = 88
             vaccinesTableView.rowHeight = UITableView.automaticDimension
 
+        
+        let today = Date()
+           if let d1 = localCalendar.date(byAdding: .day, value: 3, to: today),
+              let d2 = localCalendar.date(byAdding: .day, value: 10, to: today),
+              let d3 = localCalendar.date(byAdding: .month, value: 1, to: today) {
+               eventDatesSet.insert(localCalendar.startOfDay(for: d1))
+               eventDatesSet.insert(localCalendar.startOfDay(for: d2))
+               eventDatesSet.insert(localCalendar.startOfDay(for: d3))
+           }
+
             // Add bottom content inset equal to bottomBar height + extra
             let bottomInset: CGFloat = bottomBar.bounds.height + 24
             vaccinesTableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
             vaccinesTableView.scrollIndicatorInsets = vaccinesTableView.contentInset
-        
-        
+    
+
+        calendarButton.addTarget(self, action: #selector(calendarTapped), for: .touchUpInside)
+
 //        styleBottomBar()
         setupFiltersCollectionView()
         setupVaccinesTableView()
     }
 
+    @objc func avatarTapped() {
+//        showChildMenu()
+    }
+
+    @objc func calendarTapped() {
+        if calendarPopup == nil {
+            showCalendarPopup()
+        } else {
+            hideCalendarPopup()
+        }
+    }
+
+    func showCalendarPopup() {
+
+        // 1) Dimming background
+        let dim = UIView(frame: view.bounds)
+        dim.backgroundColor = UIColor.black.withAlphaComponent(0.18)
+        dim.alpha = 0
+        let tap = UITapGestureRecognizer(target: self, action: #selector(hideCalendarPopup))
+        dim.addGestureRecognizer(tap)
+        view.addSubview(dim)
+        dim.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            dim.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dim.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            dim.topAnchor.constraint(equalTo: view.topAnchor),
+            dim.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        self.dimmingView = dim
+
+        // 2) FSCalendar view
+        let calendar = FSCalendar()
+        calendar.translatesAutoresizingMaskIntoConstraints = false
+        calendar.layer.cornerRadius = 16
+        calendar.clipsToBounds = true
+        calendar.scope = .month
+        calendar.backgroundColor = UIColor(red: 0.93, green: 0.94, blue: 1.0, alpha: 1)
+
+        calendar.dataSource = self
+        calendar.delegate = self
+
+        // after `let calendar = FSCalendar()` and before adding it to the view:
+        calendar.translatesAutoresizingMaskIntoConstraints = false
+        calendar.layer.cornerRadius = 16
+        calendar.clipsToBounds = true
+        calendar.scope = .month
+        calendar.backgroundColor = UIColor(red: 0.95, green: 0.96, blue: 1.0, alpha: 1.0)
+
+        // Appearance: use built-in appearance settings (no delegate needed)
+        calendar.appearance.headerTitleColor = .label
+        calendar.appearance.weekdayTextColor = .secondaryLabel
+        calendar.appearance.titleDefaultColor = .label
+        calendar.appearance.titlePlaceholderColor = .secondaryLabel   // <— dates outside month
+        calendar.appearance.titleTodayColor = .white
+        calendar.appearance.todayColor = UIColor.systemGray4
+        calendar.appearance.selectionColor = UIColor.systemBlue
+        calendar.firstWeekday = 1
+
+        // styling
+        calendar.appearance.headerTitleColor = .label
+        calendar.appearance.weekdayTextColor = .secondaryLabel
+        calendar.appearance.todayColor = UIColor.systemGray4
+        calendar.appearance.titleTodayColor = .label
+        calendar.appearance.selectionColor = UIColor.systemBlue
+
+        view.addSubview(calendar)
+        calendarPopup = calendar
+
+        // 3) Anchor under the calendar button
+        let btnFrame = calendarButton.superview?.convert(calendarButton.frame, to: view) ?? calendarButton.frame
+        let topY = btnFrame.maxY + 8
+        let width: CGFloat = min(360, view.bounds.width - 32)
+
+        NSLayoutConstraint.activate([
+            calendar.topAnchor.constraint(equalTo: view.topAnchor, constant: topY),
+            calendar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            calendar.widthAnchor.constraint(equalToConstant: width),
+            calendar.heightAnchor.constraint(equalToConstant: 320)
+        ])
+
+        // 4) Animation
+        calendar.alpha = 0
+        calendar.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+        UIView.animate(withDuration: 0.25, delay: 0,
+                       usingSpringWithDamping: 0.85,
+                       initialSpringVelocity: 0.6,
+                       options: .curveEaseOut) {
+            dim.alpha = 1
+            calendar.alpha = 1
+            calendar.transform = .identity
+        }
+    }
+
+    @objc func hideCalendarPopup() {
+        guard let cal = calendarPopup, let dim = dimmingView else { return }
+        
+        UIView.animate(withDuration: 0.2, animations: {
+            cal.alpha = 0
+            cal.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+            dim.alpha = 0
+        }) { _ in
+            cal.removeFromSuperview()
+            dim.removeFromSuperview()
+            self.calendarPopup = nil
+            self.dimmingView = nil
+        }
+    }
+
+    
     private func setupFiltersCollectionView() {
            let nib = UINib(nibName: "AgeFilterCell", bundle: nil)
            filtersCollectionView.register(nib, forCellWithReuseIdentifier: "AgeFilterCell")
@@ -204,6 +337,25 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
 //        highlight.endPoint = CGPoint(x: 0.5, y: 1)
 //        highlight.cornerRadius = bottomBar.bounds.height / 2
 //        bottomBar.layer.insertSublayer(highlight, at: 0)
+    }
+
+//    func calendar(_ calendar: FSCalendar, didSelect date: Date, at monthPosition: FSCalendarMonthPosition) {
+//           print("Selected date:", date)
+//           // Use date here for filtering, etc.
+//           hideCalendarPopup()
+//       }
+
+       // Optional: dim dates outside month
+    // implement in your VC
+    // FSCalendarDataSource
+    func calendar(_ calendar: FSCalendar, numberOfEventsFor date: Date) -> Int {
+        let d = localCalendar.startOfDay(for: date)
+        return eventDatesSet.contains(d) ? 1 : 0
+    }
+
+    func calendar(_ calendar: FSCalendar, didSelect date: Date, at monthPosition: FSCalendarMonthPosition) {
+        print("selected: \(date)")
+        hideCalendarPopup()
     }
 
 

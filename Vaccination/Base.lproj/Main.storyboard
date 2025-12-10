@@ -24,7 +24,7 @@
                                         <rect key="frame" x="0.0" y="0.0" width="361" height="70"/>
                                         <subviews>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="top" spacing="2" translatesAutoresizingMaskIntoConstraints="NO" id="wYw-p5-33e" userLabel="nameStack">
-                                                <rect key="frame" x="0.0" y="12.333333333333346" width="305" height="45.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="12.333333333333346" width="304" height="45.333333333333343"/>
                                                 <subviews>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Charlie S" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="bqO-Ko-Y2y">
                                                         <rect key="frame" x="0.0" y="0.0" width="92" height="26.333333333333332"/>
@@ -40,11 +40,11 @@
                                                     </label>
                                                 </subviews>
                                             </stackView>
-                                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Profile" translatesAutoresizingMaskIntoConstraints="NO" id="fdN-4l-fgc">
-                                                <rect key="frame" x="317" y="13" width="44" height="44"/>
+                                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Profile" translatesAutoresizingMaskIntoConstraints="NO" id="QcW-xH-Qly">
+                                                <rect key="frame" x="316" y="12.666666666666657" width="45" height="45"/>
                                                 <constraints>
-                                                    <constraint firstAttribute="height" constant="44" id="Ho4-b9-vIc"/>
-                                                    <constraint firstAttribute="width" constant="44" id="UCZ-yN-4jr"/>
+                                                    <constraint firstAttribute="height" constant="45" id="l3F-IM-wNe"/>
+                                                    <constraint firstAttribute="width" constant="45" id="r2g-ph-Q0o"/>
                                                 </constraints>
                                             </imageView>
                                         </subviews>
@@ -263,6 +263,7 @@
                     </view>
                     <connections>
                         <outlet property="bottomBar" destination="qWQ-3U-Bcd" id="DZa-f0-xY5"/>
+                        <outlet property="calendarButton" destination="Mu8-Gp-Ug2" id="UBR-uv-nP7"/>
                         <outlet property="filtersCollectionView" destination="UJp-gr-CDu" id="p10-pi-l4Y"/>
                         <outlet property="vaccinesTableView" destination="USc-ll-9mb" id="Pvs-qj-bqO"/>
                     </connections>

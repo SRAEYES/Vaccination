@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4938205F2EEA123E00BC0233 /* FSCalendar in Frameworks */ = {isa = PBXBuildFile; productRef = 4938205E2EEA123E00BC0233 /* FSCalendar */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		49B0E0FA2EE8AD830080AE76 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4938205F2EEA123E00BC0233 /* FSCalendar in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +130,7 @@
 			);
 			name = Vaccination;
 			packageProductDependencies = (
+				4938205E2EEA123E00BC0233 /* FSCalendar */,
 			);
 			productName = Vaccination;
 			productReference = 49B0E0E32EE8AD820080AE76 /* Vaccination.app */;
@@ -208,6 +214,9 @@
 			);
 			mainGroup = 49B0E0DA2EE8AD820080AE76;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4938205D2EEA123E00BC0233 /* XCRemoteSwiftPackageReference "FSCalendar" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 49B0E0E42EE8AD820080AE76 /* Products */;
 			projectDirPath = "";
@@ -583,6 +592,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4938205D2EEA123E00BC0233 /* XCRemoteSwiftPackageReference "FSCalendar" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/WenchaoD/FSCalendar";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4938205E2EEA123E00BC0233 /* FSCalendar */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4938205D2EEA123E00BC0233 /* XCRemoteSwiftPackageReference "FSCalendar" */;
+			productName = FSCalendar;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 49B0E0DB2EE8AD820080AE76 /* Project object */;
 }
