@@ -153,6 +153,33 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
         
         styleBottomBar()
     }
+    
+    // Add this inside your VaccinationViewController class
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        print("DEBUG: didSelectRowAt called for section:\(indexPath.section) row:\(indexPath.row)")
+
+        // get item from your arrays
+        let item: VaccineItem
+        if indexPath.section == 0 {
+            item = upcomingVaccines[indexPath.row]
+        } else {
+            item = completedVaccines[indexPath.row]
+        }
+
+        // instantiate the detail VC (make sure XIB name matches)
+        let vc = VaccineDetailViewController(nibName: "VaccineDetailViewController", bundle: nil)
+        vc.vaccineName = item.name
+        vc.vaccineDescription = item.subtitle
+
+        // choose header color (customize per item if you want)
+        vc.headerTintColor = UIColor.systemBlue
+
+        // Use the present helper so the card animates up nicely
+        // If you don't have presentAsCard, use present(vc, animated: false) as fallback
+        vc.presentAsCard(on: self)
+    }
+
 
     private func styleBottomBar() {
         // Make it a pill
@@ -170,6 +197,8 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
             blurView.layer.cornerRadius = bottomBar.bounds.height / 2
             blurView.clipsToBounds = true
         }
+        
+        
 //    }
 //    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
 //        if let header = view as? UITableViewHeaderFooterView {
