@@ -7,8 +7,12 @@
 
 import UIKit
 import PhotosUI
+import Intents
+import IntentsUI
+//import IntentsUI
 
-class VaccineDetailViewController: UIViewController , PHPickerViewControllerDelegate {
+class VaccineDetailViewController: UIViewController , PHPickerViewControllerDelegate, INUIAddVoiceShortcutViewControllerDelegate, INUIAddVoiceShortcutButtonDelegate {
+    
     
     @IBOutlet weak var cardView: UIView!
     @IBOutlet weak var headerView: UIView!
@@ -57,6 +61,27 @@ class VaccineDetailViewController: UIViewController , PHPickerViewControllerDele
          
          setupUI()
          bindData()
+         
+         // Add 'Add to Siri' button (bottom-right corner of the card view)
+         let addSiriButton = INUIAddVoiceShortcutButton(style: .whiteOutline)
+         addSiriButton.translatesAutoresizingMaskIntoConstraints = false
+         addSiriButton.delegate = self
+
+         view.addSubview(addSiriButton)
+
+         // constraints: place at bottom-right of the card (adjust as needed)
+         NSLayoutConstraint.activate([
+             addSiriButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+             addSiriButton.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -16),
+             addSiriButton.widthAnchor.constraint(equalToConstant: 44),
+             addSiriButton.heightAnchor.constraint(equalToConstant: 44)
+         ])
+
+         // Assign a shortcut if userActivity exists (we donated earlier in bindData)
+         if let activity = self.userActivity {
+             addSiriButton.shortcut = INShortcut(userActivity: activity)
+         }
+
          
          
      }
@@ -114,10 +139,97 @@ class VaccineDetailViewController: UIViewController , PHPickerViewControllerDele
          }
      }
 
+    // create the button
+//    let addSiriButton = INUIAddVoiceShortcutButton(style: .whiteOutline)
+//    func addSiriButton;.translatesAutoresizingMaskIntoConstraints = false
+//    addSiriButton.delegate = self
+//    view.addSubview(addSiriButton)
+//    // constraints ...
+//    if let activity = self.userActivity {
+//        addSiriButton.shortcut = INShortcut(userActivity: activity)
+//    }
+//        
+        
      private func bindData() {
          titleLabel.text = vaccineName ?? "Vaccine"
          descriptionLabel.text = vaccineDescription ?? "" // will now be visible
      }
+    
+    /// Call this when the user opens the vaccine detail screen (or schedules reminder).
+    func donateViewVaccineActivity(vaccineID: String, vaccineName: String) {
+        let activityType = "com.yourapp.viewVaccine" // use your bundle-based unique string in production
+        let activity = NSUserActivity(activityType: activityType)
+        activity.title = "View \(vaccineName)"
+        activity.userInfo = ["vaccineID": vaccineID]
+        activity.isEligibleForSearch = true
+        activity.isEligibleForPrediction = true
+        activity.persistentIdentifier = NSUserActivityPersistentIdentifier(vaccineID)
+        activity.suggestedInvocationPhrase = "Show \(vaccineName) vaccine"
+
+        
+        // Make the activity current (donates to Siri)
+        self.userActivity = activity
+        activity.becomeCurrent()
+    }
+
+    // Called when the Add button is tapped (delegate)
+    override func present(_ viewControllerToPresent: UIViewController, animated: Bool, completion: (() -> Void)? = nil) {
+        // fallback - usually not needed; we'll present controllers explicitly below
+        self.present(viewControllerToPresent, animated: animated, completion: completion)
+    }
+
+    // INUIAddVoiceShortcutButtonDelegate
+    func addVoiceShortcutButton(_ button: INUIAddVoiceShortcutButton, didTap addVoiceShortcutViewController: INUIAddVoiceShortcutViewController) {
+        // Not used; the system uses button to present the controller—implementing delegate methods below is enough.
+    }
+
+    // INUIAddVoiceShortcutButtonDelegate optional method to present the Add UI:
+    func present(_ addVoiceShortcutViewController: INUIAddVoiceShortcutViewController, for button: INUIAddVoiceShortcutButton) {
+        addVoiceShortcutViewController.delegate = self
+        self.present(addVoiceShortcutViewController, animated: true, completion: nil)
+    }
+
+    // INUIAddVoiceShortcutViewControllerDelegate
+    func addVoiceShortcutViewController(_ controller: INUIAddVoiceShortcutViewController, didFinishWith voiceShortcut: INVoiceShortcut?, error: Error?) {
+        controller.dismiss(animated: true, completion: nil)
+        if let err = error { print("Add voice shortcut error:", err) }
+        else { print("Voice shortcut added.") }
+    }
+
+    func addVoiceShortcutViewControllerDidCancel(_ controller: INUIAddVoiceShortcutViewController) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+
+    func present(_ editVoiceShortcutViewController: INUIEditVoiceShortcutViewController, for addVoiceShortcutButton: INUIAddVoiceShortcutButton) {
+        // We are not using "edit shortcut" flow, so just present normally.
+        self.present(editVoiceShortcutViewController, animated: true, completion: nil)
+    }
+
+    
+    func editVoiceShortcutViewController(_ controller: INUIEditVoiceShortcutViewController,
+                                         didUpdate voiceShortcut: INVoiceShortcut?,
+                                         error: Error?) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+
+    func editVoiceShortcutViewControllerDidCancel(_ controller: INUIEditVoiceShortcutViewController) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+
+    func donateRemindVaccineActivity(vaccineID: String, vaccineName: String, remindDate: Date) {
+        let activity = NSUserActivity(activityType: "com.yourapp.remindVaccine")
+        activity.title = "Remind me about \(vaccineName)"
+        activity.userInfo = ["vaccineID": vaccineID, "date": remindDate.timeIntervalSince1970]
+        activity.isEligibleForPrediction = true
+        activity.persistentIdentifier = NSUserActivityPersistentIdentifier("reminder-\(vaccineID)-\(Int(remindDate.timeIntervalSince1970))")
+        activity.suggestedInvocationPhrase = "Remind me about \(vaccineName)"
+
+        NotificationHelper.scheduleLocalNotification(identifier: "vaccine-\(vaccineID)", title: "Vaccine Reminder", body: "Time for \(vaccineName).", date: remindDate)
+
+        self.userActivity = activity
+        activity.becomeCurrent()
+    }
+
 
      // MARK: - Helpers
      private func formattedDate(_ date: Date) -> String {

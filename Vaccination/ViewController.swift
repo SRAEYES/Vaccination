@@ -27,16 +27,16 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
 
 
     let baseUpcomingVaccines: [VaccineItem] = [
-        VaccineItem(name: "Tuberculosis", subtitle: "At Birth", dueDate: DateHelper.daysFromNow(0)),
-        VaccineItem(name: "Poliomyelitis", subtitle: "6 Weeks", dueDate: DateHelper.daysFromNow(42)),
-        VaccineItem(name: "Hepatitis B", subtitle: "10 Weeks", dueDate: DateHelper.daysFromNow(70)),
-        VaccineItem(name: "DTP Vaccine", subtitle: "14 Weeks", dueDate: DateHelper.daysFromNow(98)),
-        VaccineItem(name: "Measles", subtitle: "9 Months", dueDate: DateHelper.monthsFromNow(9)),
-        VaccineItem(name: "MMR", subtitle: "12 Months", dueDate: DateHelper.monthsFromNow(12))
+        VaccineItem(id: "tb-1", name: "Tuberculosis", subtitle: "At Birth", dueDate: DateHelper.daysFromNow(0)),
+        VaccineItem(id: "polio-1",name: "Poliomyelitis", subtitle: "6 Weeks", dueDate: DateHelper.daysFromNow(42)),
+        VaccineItem(id: "hep-b-1",name: "Hepatitis B", subtitle: "10 Weeks", dueDate: DateHelper.daysFromNow(70)),
+        VaccineItem(id: "hep-b-2",name: "DTP Vaccine", subtitle: "14 Weeks", dueDate: DateHelper.daysFromNow(98)),
+        VaccineItem(id: "hep-b-3",name: "Measles", subtitle: "9 Months", dueDate: DateHelper.monthsFromNow(9)),
+        VaccineItem(id: "hep-b-4",name: "MMR", subtitle: "12 Months", dueDate: DateHelper.monthsFromNow(12))
     ]
 
     let baseCompletedVaccines: [VaccineItem] = [
-        VaccineItem(name: "Rotavirus", subtitle: "6 Weeks", dueDate: nil)
+        VaccineItem(id: "rota-1", name: "Rotavirus", subtitle: "6 Weeks", dueDate: nil)
     ]
 
 
@@ -140,6 +140,7 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
     }
 
 
+    
     func applyAdvancedFilterAndSort() {
         // First start with the results of chip-based filtering (so chips + advanced filters combine)
         // applyFilter() already sets upcomingVaccines & completedVaccines from base arrays
@@ -259,7 +260,34 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
         vaccinesTableView.separatorStyle = .none
     }
     
+    func openVaccineDetail(withID vaccineID: String) {
+        // 1. Try to find the vaccine in the upcoming list
+        if let item = baseUpcomingVaccines.first(where: { $0.id == vaccineID }) {
+            presentDetail(for: item)
+            return
+        }
+
+        // 2. Try in completed
+        if let item = baseCompletedVaccines.first(where: { $0.id == vaccineID }) {
+            presentDetail(for: item)
+            return
+        }
+
+        print("❗ No vaccine found for ID: \(vaccineID)")
+    }
+
+    func presentDetail(for item: VaccineItem) {
+        let vc = VaccineDetailViewController(nibName: "VaccineDetailViewController", bundle: nil)
+        vc.vaccineName = item.name
+        vc.vaccineDescription = item.subtitle
+        vc.headerTintColor = .systemBlue
+        
+        vc.modalPresentationStyle = .overCurrentContext
+        vc.presentAsCard(on: self)
+    }
+
     struct VaccineItem {
+        let id: String
         let name: String
         let subtitle: String
         let dueDate: Date?

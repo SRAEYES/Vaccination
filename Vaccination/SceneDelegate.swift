@@ -18,6 +18,29 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         guard let _ = (scene as? UIWindowScene) else { return }
     }
+    
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        guard let type = userActivity.activityType as String? else { return }
+
+        if type == "com.yourapp.viewVaccine" {
+            if let vaccineID = userActivity.userInfo?["vaccineID"] as? String {
+                // Navigate to the vaccine detail screen.
+                // How to navigate depends on your app structure.
+                // Example: if root is UINavigationController:
+                if let nav = window?.rootViewController as? UINavigationController,
+                   let root = nav.viewControllers.first as? ViewController {
+                    root.openVaccineDetail(withID: vaccineID)
+                } else {
+                    // If not using nav, you can present the detail directly
+                    let vc = VaccineDetailViewController(nibName: "VaccineDetailViewController", bundle: nil)
+                    vc.vaccineName = "..." // populate from vaccineID
+                    vc.vaccineDescription = "..."
+                    window?.rootViewController?.present(vc, animated: true, completion: nil)
+                }
+            }
+        }
+    }
+
 
     func sceneDidDisconnect(_ scene: UIScene) {
         // Called as the scene is being released by the system.
