@@ -12,11 +12,42 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
     @IBOutlet weak var filtersCollectionView: UICollectionView!
     @IBOutlet weak var vaccinesTableView: UITableView!
     @IBOutlet weak var bottomBar: UIView!
+    @IBOutlet weak var advancedFilterButton: UIButton!   // connect this to the small icon in IB
 
+    // advanced filter state
+    enum AdvancedFilterMode {
+        case all
+        case upcomingOnly
+        case completedOnly
+        case missedOnly
+    }
+
+    var advancedFilterMode: AdvancedFilterMode = .all
+    var advancedSortByNearestDue: Bool = true    // sort preference
+
+
+    let baseUpcomingVaccines: [VaccineItem] = [
+        VaccineItem(name: "Tuberculosis", subtitle: "At Birth", dueDate: DateHelper.daysFromNow(0)),
+        VaccineItem(name: "Poliomyelitis", subtitle: "6 Weeks", dueDate: DateHelper.daysFromNow(42)),
+        VaccineItem(name: "Hepatitis B", subtitle: "10 Weeks", dueDate: DateHelper.daysFromNow(70)),
+        VaccineItem(name: "DTP Vaccine", subtitle: "14 Weeks", dueDate: DateHelper.daysFromNow(98)),
+        VaccineItem(name: "Measles", subtitle: "9 Months", dueDate: DateHelper.monthsFromNow(9)),
+        VaccineItem(name: "MMR", subtitle: "12 Months", dueDate: DateHelper.monthsFromNow(12))
+    ]
+
+    let baseCompletedVaccines: [VaccineItem] = [
+        VaccineItem(name: "Rotavirus", subtitle: "6 Weeks", dueDate: nil)
+    ]
+
+
+    // These are the filtered lists shown in UI
+    var upcomingVaccines: [VaccineItem] = []
+    var completedVaccines: [VaccineItem] = []
 
 
     let filterOptions = ["All", "At Birth", "6 Weeks", "10 Weeks", "14 Weeks", "6 Months", "9 Months", "12 Months", "18 Months", "5 Years", "10 Years", "14 Years"]
     
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -31,17 +62,193 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
             vaccinesTableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
             vaccinesTableView.scrollIndicatorInsets = vaccinesTableView.contentInset
         
+        upcomingVaccines = baseUpcomingVaccines
+        completedVaccines = baseCompletedVaccines
+
+
+
         
 //        styleBottomBar()
         setupFiltersCollectionView()
         setupVaccinesTableView()
     }
 
+    @IBAction func advancedFilterTapped(_ sender: Any) {
+        let sheet = UIAlertController(title: "Filter & Sort", message: nil, preferredStyle: .actionSheet)
+
+        // Show group
+        sheet.addAction(UIAlertAction(title: "Show: All", style: .default) { _ in
+            self.advancedFilterMode = .all
+            self.applyAdvancedFilterAndSort()
+        })
+        sheet.addAction(UIAlertAction(title: "Show: Upcoming only", style: .default) { _ in
+            self.advancedFilterMode = .upcomingOnly
+            self.applyAdvancedFilterAndSort()
+        })
+        sheet.addAction(UIAlertAction(title: "Show: Completed only", style: .default) { _ in
+            self.advancedFilterMode = .completedOnly
+            self.applyAdvancedFilterAndSort()
+        })
+        sheet.addAction(UIAlertAction(title: "Show: Missed / Skipped", style: .default) { _ in
+            self.advancedFilterMode = .missedOnly
+            self.applyAdvancedFilterAndSort()
+        })
+
+        
+        // Separator-like neutral action (useful grouping)
+        sheet.addAction(UIAlertAction(title: "— Sort —", style: .default, handler: nil))
+
+        // Sort options
+        sheet.addAction(UIAlertAction(title: "Sort: Nearest due date", style: .default) { _ in
+            self.advancedSortByNearestDue = true
+            self.applyAdvancedFilterAndSort()
+        })
+        sheet.addAction(UIAlertAction(title: "Sort: Name (A → Z)", style: .default) { _ in
+            self.advancedSortByNearestDue = false
+            self.applyAdvancedFilterAndSort()
+        })
+
+        // Reset
+        sheet.addAction(UIAlertAction(title: "Reset filters", style: .destructive) { _ in
+            self.advancedFilterMode = .all
+            self.advancedSortByNearestDue = true
+            self.selectedFilterIndex = 0
+            self.applyFilter()          // keep chip selection logic intact
+            self.applyAdvancedFilterAndSort()
+        })
+
+        // Cancel
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+
+        // For iPad: anchor to the button
+        if let popover = sheet.popoverPresentationController, let btn = sender as? UIView {
+            popover.sourceView = btn
+            popover.sourceRect = btn.bounds
+        }
+
+        present(sheet, animated: true)
+    }
+    
+    struct DateHelper {
+        static func daysFromNow(_ days: Int) -> Date {
+            Calendar.current.date(byAdding: .day, value: days, to: Date())!
+        }
+
+        static func monthsFromNow(_ months: Int) -> Date {
+            Calendar.current.date(byAdding: .month, value: months, to: Date())!
+        }
+    }
+
+
+    func applyAdvancedFilterAndSort() {
+        // First start with the results of chip-based filtering (so chips + advanced filters combine)
+        // applyFilter() already sets upcomingVaccines & completedVaccines from base arrays
+        // We'll copy current visible arrays, then apply advanced rules on top.
+
+        // Ensure chip base is applied first
+        applyFilter() // this updates upcomingVaccines/completedVaccines from chip selection
+
+        // Now filter by advancedFilterMode
+        switch advancedFilterMode {
+        case .all:
+            // nothing extra
+            break
+        case .upcomingOnly:
+            completedVaccines = []
+        case .completedOnly:
+            upcomingVaccines = []
+        case .missedOnly:
+            upcomingVaccines = baseUpcomingVaccines.filter {
+                $0.subtitle.lowercased().contains("skip") || $0.subtitle.lowercased().contains("miss")
+            }
+            completedVaccines = baseCompletedVaccines.filter {
+                $0.subtitle.lowercased().contains("skip") || $0.subtitle.lowercased().contains("miss")
+            }
+        }
+
+        // Combine lists for sorting if needed. We will sort each section individually.
+//        if advancedSortByNearestDue {
+//            // If you have a dueDate property, sort by it. For now we sort by name fallback.
+//            // TODO: replace with actual date sorting when data model includes dueDate
+//            upcomingVaccines.sort { $0.name < $1.name }   // placeholder: alphabetical as fallback
+//            completedVaccines.sort { $0.name < $1.name }
+//        } else {
+//            // sort by name alphabetically
+//            upcomingVaccines.sort { $0.name.lowercased() < $1.name.lowercased() }
+//            completedVaccines.sort { $0.name.lowercased() < $1.name.lowercased() }
+//        }
+
+        if advancedSortByNearestDue {
+            upcomingVaccines.sort {
+                guard let d1 = $0.dueDate, let d2 = $1.dueDate else { return false }
+                return d1 < d2
+            }
+            completedVaccines.sort {
+                guard let d1 = $0.dueDate, let d2 = $1.dueDate else { return false }
+                return d1 < d2
+            }
+        } else {
+            upcomingVaccines.sort { $0.name.lowercased() < $1.name.lowercased() }
+            completedVaccines.sort { $0.name.lowercased() < $1.name.lowercased() }
+        }
+
+
+        // update UI
+        DispatchQueue.main.async {
+            self.vaccinesTableView.reloadData()
+        }
+    }
+
+    func updateAdvancedFilterButtonAppearance() {
+        // Button appears active when not showing "All" or when sorting differs
+        let isActive = (advancedFilterMode != .all) || (advancedSortByNearestDue == false)
+        if isActive {
+            advancedFilterButton.tintColor = UIColor.systemBlue
+            // optionally change background circle
+            advancedFilterButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.12)
+            advancedFilterButton.layer.cornerRadius = 8
+        } else {
+            advancedFilterButton.tintColor = UIColor.label
+            advancedFilterButton.backgroundColor = .clear
+        }
+    }
+
+    
+    func applyFilter() {
+        let selected = filterOptions[selectedFilterIndex]
+
+        if selected == "All" {
+            upcomingVaccines = baseUpcomingVaccines
+            completedVaccines = baseCompletedVaccines
+        } else {
+            // Filter based on subtitle (e.g., "At Birth", "6 Weeks")
+            upcomingVaccines = baseUpcomingVaccines.filter { $0.subtitle == selected }
+            completedVaccines = baseCompletedVaccines.filter { $0.subtitle == selected }
+        }
+
+        DispatchQueue.main.async {
+            self.vaccinesTableView.reloadData()
+        }
+    }
+
     private func setupFiltersCollectionView() {
-           let nib = UINib(nibName: "AgeFilterCell", bundle: nil)
-           filtersCollectionView.register(nib, forCellWithReuseIdentifier: "AgeFilterCell")
-           filtersCollectionView.showsHorizontalScrollIndicator = false
+        let nib = UINib(nibName: "AgeFilterCell", bundle: nil)
+            filtersCollectionView.register(nib, forCellWithReuseIdentifier: "AgeFilterCell")
+            filtersCollectionView.showsHorizontalScrollIndicator = false
+
+            // IMPORTANT: set delegate & datasource
+            filtersCollectionView.delegate = self
+            filtersCollectionView.dataSource = self
+
+            // configure flow layout for horizontal scrolling
+            if let layout = filtersCollectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+                layout.scrollDirection = .horizontal
+                layout.minimumInteritemSpacing = 8
+                layout.minimumLineSpacing = 8
+                layout.sectionInset = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+            }
        }
+    
     private func setupVaccinesTableView() {
         vaccinesTableView.delegate = self
         vaccinesTableView.dataSource = self
@@ -55,26 +262,43 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
     struct VaccineItem {
         let name: String
         let subtitle: String
+        let dueDate: Date?
     }
 
-    
-    let upcomingVaccines: [VaccineItem] = [
-        VaccineItem(name: "Tuberculosis", subtitle: "Due in 5 days"),
-        VaccineItem(name: "Poliomyelitis", subtitle: "Due in 25 days"),
-        VaccineItem(name: "Hepatitis B", subtitle: "Due in 5 months")
-    ]
 
-    let completedVaccines: [VaccineItem] = [
-        VaccineItem(name: "Rotavirus", subtitle: "Completed")
-    ]
+    func daysFromNow(_ days: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: days, to: Date())!
+    }
+    func monthsFromNow(_ months: Int) -> Date {
+        Calendar.current.date(byAdding: .month, value: months, to: Date())!
+    }
 
     var selectedFilterIndex: Int = 0
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        print("DEBUG: filter tapped index = \(indexPath.item) -> \(filterOptions[indexPath.item])")
         selectedFilterIndex = indexPath.item
-        collectionView.reloadData()
-        // apply filter logic
+
+        // refresh chips so selected chip gets highlighted
+        DispatchQueue.main.async {
+            collectionView.reloadData()
+        }
+
+        // apply filter to vaccines and reload table
+        applyFilter()
+
+        // scroll table to top (nice UX)
+        if vaccinesTableView.numberOfSections > 0, vaccinesTableView.numberOfRows(inSection: 0) > 0 {
+            vaccinesTableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .top, animated: true)
+        } else {
+            // if no rows in section 0, scroll to top of table
+            vaccinesTableView.setContentOffset(.zero, animated: true)
+        }
+
+        // make sure selected chip is visible in center
+        filtersCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
     }
+
 
     // Number of items
         func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -89,10 +313,14 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
             }
             
             let title = filterOptions[indexPath.item]
-            let isSelected = (indexPath.item == 0) // For now, make "All" look selected
+//            let isSelected = (indexPath.item == 0) For now, make "All" look selected
             
+//            cell.configure(with: title, isSelected: isSelected)
+//            print("cellForItemAt for index", indexPath.item)
+            
+            let isSelected = (indexPath.item == selectedFilterIndex)
             cell.configure(with: title, isSelected: isSelected)
-            print("cellForItemAt for index", indexPath.item)
+
             return cell
         }
         
@@ -120,21 +348,24 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
 
         func tableView(_ tableView: UITableView,
                        cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            guard let cell = tableView.dequeueReusableCell(
-                withIdentifier: "VaccineCell",
-                for: indexPath
-            ) as? VaccineCell else {
-                return UITableViewCell()
+
+                guard let cell = tableView.dequeueReusableCell(
+                    withIdentifier: "VaccineCell",
+                    for: indexPath
+                ) as? VaccineCell else { return UITableViewCell() }
+
+                let source = indexPath.section == 0 ? upcomingVaccines : completedVaccines
+
+                guard indexPath.row < source.count else {
+                    print("⚠️ cellForRowAt out of range. Reloading table...")
+                    DispatchQueue.main.async { tableView.reloadData() }
+                    return UITableViewCell()
+                }
+
+                let item = source[indexPath.row]
+                cell.configure(name: item.name, subtitle: item.subtitle)
+                return cell
             }
-
-            let item = indexPath.section == 0
-                ? upcomingVaccines[indexPath.row]
-                : completedVaccines[indexPath.row]
-
-            cell.configure(name: item.name, subtitle: item.subtitle)
-            cell.selectionStyle = .none
-            return cell
-        }
 
         // Optional: section headers (Upcoming / Completed)
         func tableView(_ tableView: UITableView,
@@ -155,29 +386,45 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
     }
     
     // Add this inside your VaccinationViewController class
+    // Safe didSelectRowAt — paste inside your ViewController class
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         print("DEBUG: didSelectRowAt called for section:\(indexPath.section) row:\(indexPath.row)")
+        print("DEBUG: upcoming count = \(upcomingVaccines.count), completed count = \(completedVaccines.count)")
 
-        // get item from your arrays
-        let item: VaccineItem
-        if indexPath.section == 0 {
-            item = upcomingVaccines[indexPath.row]
-        } else {
-            item = completedVaccines[indexPath.row]
+        // Ensure section is valid (0 or 1)
+        guard indexPath.section == 0 || indexPath.section == 1 else {
+            print("DEBUG: invalid section \(indexPath.section)")
+            return
         }
 
-        // instantiate the detail VC (make sure XIB name matches)
+        // Choose the array based on section
+        let sourceArray = (indexPath.section == 0) ? upcomingVaccines : completedVaccines
+
+        // Guard row index within bounds
+        guard indexPath.row >= 0 && indexPath.row < sourceArray.count else {
+            print("DEBUG: tapped row \(indexPath.row) out of range for section \(indexPath.section) (count = \(sourceArray.count)).")
+            // Optionally: attempt to correct by reloading and returning
+            DispatchQueue.main.async {
+                self.vaccinesTableView.reloadData()
+            }
+            return
+        }
+
+        // Safe to fetch item
+        let item = sourceArray[indexPath.row]
+        print("DEBUG: presenting detail for item: \(item.name)")
+
+        // Instantiate and present detail VC
         let vc = VaccineDetailViewController(nibName: "VaccineDetailViewController", bundle: nil)
         vc.vaccineName = item.name
         vc.vaccineDescription = item.subtitle
-
-        // choose header color (customize per item if you want)
         vc.headerTintColor = UIColor.systemBlue
 
-        // Use the present helper so the card animates up nicely
-        // If you don't have presentAsCard, use present(vc, animated: false) as fallback
-        vc.presentAsCard(on: self)
+        // present as card (uses presentAsCard helper in detail VC)
+        DispatchQueue.main.async {
+            vc.presentAsCard(on: self)
+        }
     }
 
 
@@ -198,6 +445,7 @@ class ViewController: UIViewController , UICollectionViewDataSource, UICollectio
             blurView.clipsToBounds = true
         }
         
+
         
 //    }
 //    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {

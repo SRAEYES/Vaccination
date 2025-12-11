@@ -155,6 +155,9 @@
                                                 </constraints>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" image="line.3.horizontal.decrease.circle" catalog="system"/>
+                                                <connections>
+                                                    <action selector="advancedFilterTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="lAe-4m-lQt"/>
+                                                </connections>
                                             </button>
                                         </subviews>
                                     </stackView>
@@ -262,8 +265,9 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="advancedFilterButton" destination="3U7-5j-d4W" id="RAo-V7-BUT"/>
                         <outlet property="bottomBar" destination="qWQ-3U-Bcd" id="DZa-f0-xY5"/>
-                        <outlet property="filtersCollectionView" destination="UJp-gr-CDu" id="p10-pi-l4Y"/>
+                        <outlet property="filtersCollectionView" destination="UJp-gr-CDu" id="gIj-5f-Uim"/>
                         <outlet property="vaccinesTableView" destination="USc-ll-9mb" id="Pvs-qj-bqO"/>
                     </connections>
                 </viewController>
